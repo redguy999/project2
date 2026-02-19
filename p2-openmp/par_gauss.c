@@ -62,6 +62,10 @@ void rand_system()
     // generate random matrix entries
     #pragma omp parallel for
     for (int row = 0; row < n; row++) {
+        #ifdef _OPENMP
+        //Probably should do this differently
+        seed = omp_get_thread_num();
+        #endif
         int col = triangular_mode ? row : 0;
         //NOTE: if triangular_mode is true, we can't pragma the inner loop.
         for (; col < n; col++) {
@@ -137,8 +141,9 @@ void read_system(const char *fn)
 void gaussian_elimination()
 {
     //Don't think we can parallelize the inner loops, due to the variable inner loop values.
-    #pragma omp parallel for
+    // #pragma omp parallel for //This doesn't work.
     for (int pivot = 0; pivot < n; pivot++) {
+        #pragma omp parallel for
         for (int row = pivot+1; row < n; row++) {
             REAL coeff = A[row*n + pivot] / A[pivot*n + pivot];
             A[row*n + pivot] = 0.0;
@@ -283,7 +288,7 @@ int main(int argc, char *argv[])
     // print results
 #    ifdef _OPENMP
     printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
-            omp_get_num_threads(), find_max_error(),
+            omp_get_max_threads(), find_max_error(),
             GET_TIMER(init), GET_TIMER(gaus), GET_TIMER(bsub));
 #else
     printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
