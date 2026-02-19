@@ -269,10 +269,15 @@ int main(int argc, char *argv[])
     }
 
     // print results
+#    ifdef _OPENMP
+    printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
+            omp_get_num_threads(), find_max_error(),
+            GET_TIMER(init), GET_TIMER(gaus), GET_TIMER(bsub));
+#else
     printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
             1, find_max_error(),
             GET_TIMER(init), GET_TIMER(gaus), GET_TIMER(bsub));
-
+#endif
     // clean up and exit
     free(A);
     free(b);
