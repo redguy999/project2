@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 // custom timing macros
 #include "timer.h"
@@ -57,8 +60,10 @@ void rand_system()
     unsigned long seed = 0;
 
     // generate random matrix entries
+    #pragma omp parallel for
     for (int row = 0; row < n; row++) {
         int col = triangular_mode ? row : 0;
+        //NOTE: if triangular_mode is true, we can't pragma the inner loop.
         for (; col < n; col++) {
             if (row != col) {
                 seed = (1103515245*seed + 12345) % (1<<31);
@@ -70,6 +75,7 @@ void rand_system()
     }
 
     // generate right-hand side such that the solution matrix is all 1s
+    #pragma omp parallel for
     for (int row = 0; row < n; row++) {
         b[row] = 0.0;
         for (int col = 0; col < n; col++) {
@@ -107,6 +113,7 @@ void read_system(const char *fn)
     }
 
     // read all values
+    // #pragma omp parallel for
     for (int row = 0; row < n; row++) {
         for (int col = 0; col < n; col++) {
             if (fscanf(fin, "%lf", &A[row*n + col]) != 1) {
@@ -129,6 +136,8 @@ void read_system(const char *fn)
  */
 void gaussian_elimination()
 {
+    //Don't think we can parallelize the inner loops, due to the variable inner loop values.
+    #pragma omp parallel for
     for (int pivot = 0; pivot < n; pivot++) {
         for (int row = pivot+1; row < n; row++) {
             REAL coeff = A[row*n + pivot] / A[pivot*n + pivot];
@@ -163,11 +172,14 @@ void back_substitution_row()
  */
 void back_substitution_column()
 {
+    #pragma omp parallel for
     for (int row = 0; row < n; row++) {
         x[row] = b[row];
     }
     for (int col = n-1; col >= 0; col--) {
         x[col] /= A[col*n + col];
+        //I think we can parallelize this inner loop, though I'm not sure this is quite how to do it.
+        #pragma omp parallel for
         for (int row = 0; row < col; row++) {
             x[row] += -A[row*n + col] * x[col];
         }
