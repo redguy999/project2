@@ -39,7 +39,7 @@
 #include "timer.h"
 
 // uncomment this line to enable the alternative back substitution method
-// #define USE_COLUMN_BACKSUB
+#define USE_COLUMN_BACKSUB
 
 // use 64-bit IEEE arithmetic (change to "float" to use 32-bit arithmetic)
 #define REAL double
@@ -73,26 +73,21 @@ void rand_system()
     }
     
     // start parallel region here to reduce overhead
-    #pragma omp parallel \
+#   pragma omp parallel \
         default(none) \
         shared(A, n, triangular_mode)
     {
         // initialize pseudorandom number generator
         // (see https://en.wikipedia.org/wiki/Linear_congruential_generator)
         unsigned long seed = 0;
-        #ifdef _OPENMP
+#       ifdef _OPENMP
         seed = omp_get_thread_num(); // set seed out here for one seed per thread
-        #endif
+#       endif
 
         // generate random matrix entries
-        #pragma omp for
+#       pragma omp for
         for (int row = 0; row < n; row++) {
-            // #ifdef _OPENMP
-            //Probably should do this differently
-            // seed = omp_get_thread_num();
-            // #endif
             int col = triangular_mode ? row : 0;
-            //NOTE: if triangular_mode is true, we can't pragma the inner loop.
             for (; col < n; col++) {
                 if (row != col) {
                     seed = (1103515245*seed + 12345) % (1<<31);
@@ -105,7 +100,7 @@ void rand_system()
     }
 
     // generate right-hand side such that the solution matrix is all 1s
-    #pragma omp parallel for \
+#   pragma omp parallel for \
         default(none) \
         shared(A, b, n)
     for (int row = 0; row < n; row++) {
@@ -145,7 +140,6 @@ void read_system(const char *fn)
     }
 
     // read all values
-    // #pragma omp parallel for
     for (int row = 0; row < n; row++) {
         for (int col = 0; col < n; col++) {
             if (fscanf(fin, "%lf", &A[row*n + col]) != 1) {
@@ -169,9 +163,8 @@ void read_system(const char *fn)
 void gaussian_elimination()
 {
     //Don't think we can parallelize the inner loops, due to the variable inner loop values.
-    // #pragma omp parallel for //This doesn't work.
     for (int pivot = 0; pivot < n; pivot++) {
-        #pragma omp parallel for default(none) \
+#       pragma omp parallel for default(none) \
             shared(A, b, n, pivot)
         for (int row = pivot+1; row < n; row++) {
             REAL coeff = A[row*n + pivot] / A[pivot*n + pivot];
@@ -191,7 +184,7 @@ void gaussian_elimination()
 void back_substitution_row()
 {
     REAL tmp;
-    #pragma omp parallel for default(none) shared(A, x, b, n) private(tmp)
+#   pragma omp parallel for default(none) shared(A, x, b, n) private(tmp)
     for (int row = n-1; row >= 0; row--) {
         tmp = b[row];
         for (int col = row+1; col < n; col++) {
@@ -207,15 +200,12 @@ void back_substitution_row()
  */
 void back_substitution_column()
 {
-    #pragma omp parallel for default(none) shared(A, x, b, n)
+#   pragma omp parallel for default(none) shared(A, x, b, n)
     for (int row = 0; row < n; row++) {
         x[row] = b[row];
     }
     for (int col = n-1; col >= 0; col--) {
         x[col] /= A[col*n + col];
-        //I think we can parallelize this inner loop, though I'm not sure this is quite how to do it.
-        #pragma omp parallel for default(none) \
-            shared(A, x, n, col)
         for (int row = 0; row < col; row++) {
             x[row] += -A[row*n + col] * x[col];
         }
@@ -321,11 +311,11 @@ int main(int argc, char *argv[])
     printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
             omp_get_max_threads(), find_max_error(),
             GET_TIMER(init), GET_TIMER(gaus), GET_TIMER(bsub));
-#else
+#   else
     printf("Nthreads=%2d  ERR=%8.1e  INIT: %8.4fs  GAUS: %8.4fs  BSUB: %8.4fs\n",
             1, find_max_error(),
             GET_TIMER(init), GET_TIMER(gaus), GET_TIMER(bsub));
-#endif
+#   endif
     // clean up and exit
     free(A);
     free(b);
