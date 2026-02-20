@@ -7,6 +7,23 @@
  * Compile with --std=c99
  */
 
+ /*
+    --Analysis--
+
+    Changes: 
+    Added an alternate version of the final print statement for when there's multiple threads.
+    Added several "omp parallel for" for several of the for loops.
+
+    notes:
+    For "gaussian_elimination" I originally attempted to parallelize on the outer for loop,
+    Attempting to do so resulted in the answer being incorrect. Likely due to the final line of the inner for loop.
+    That access of "b" creates a race condition, one that is likely to fail. 
+    Since the only way it could work is if all the threads just so happen to run in a manner that the values of "b"
+    end up being set in the order the serial version does, which is extremely unlikely especially with a large matrix.
+
+
+ 
+ */
 #include <getopt.h>
 #include <limits.h>
 #include <math.h>
@@ -22,7 +39,7 @@
 #include "timer.h"
 
 // uncomment this line to enable the alternative back substitution method
-/*#define USE_COLUMN_BACKSUB*/
+// #define USE_COLUMN_BACKSUB
 
 // use 64-bit IEEE arithmetic (change to "float" to use 32-bit arithmetic)
 #define REAL double
@@ -174,6 +191,7 @@ void gaussian_elimination()
 void back_substitution_row()
 {
     REAL tmp;
+    #pragma omp parallel for default(none) shared(A, x, b, n) private(tmp)
     for (int row = n-1; row >= 0; row--) {
         tmp = b[row];
         for (int col = row+1; col < n; col++) {
