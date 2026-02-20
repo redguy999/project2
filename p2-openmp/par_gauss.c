@@ -21,7 +21,14 @@
     Since the only way it could work is if all the threads just so happen to run in a manner that the values of "b"
     end up being set in the order the serial version does, which is extremely unlikely especially with a large matrix.
 
-
+    Backwards substitution column: I attempted to parallelize all of the for loops, to mixed results:
+    -Parallelizing it seems to make the function slightly faster, usually taking ~.028 without and ~.023 with the parallelization, marginal.
+    -Attempting to parallelize the second loop doesn't work as the result will end up incorrect, this is due to the data dependence's from accesses to x.
+    -Attempting to parallelize the inner loop does work, but seems to just end up being slower, likely due to overhead for each thread
+     not outweighting the speedup. I tested this with a matrix of size 10000 and 128 threads, parallelizing that loop caused BSUB to take 3.6328s,
+     while not having it parallelized cause it to take 0.0909s. parallelizing being slower was also seen with 32 threads.
+    -Attempting to put the entire section inside of a parallel and then omp for the first and inner loop wasn't faster.
+     with 5000 size matrix, it ends up taking about the same about of time as the first.
  
  */
 #include <getopt.h>
