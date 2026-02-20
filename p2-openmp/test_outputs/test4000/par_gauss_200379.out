@@ -1,0 +1,2 @@
+Threads: 16
+Nthreads=16  ERR= 5.0e-14  INIT:   0.0101s  GAUS:   0.5170s  BSUB:   0.0108s

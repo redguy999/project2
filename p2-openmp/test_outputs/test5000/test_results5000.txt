@@ -1,0 +1,16 @@
+Size: 5000
+
+Threads: 1
+Nthreads= 1  ERR= 5.3e-14  INIT:   0.2193s  GAUS:  28.6814s  BSUB:   0.0131s
+
+Threads: 2
+Nthreads= 2  ERR= 5.4e-14  INIT:   0.1107s  GAUS:  20.8775s  BSUB:   0.0131s
+
+Threads: 4
+Nthreads= 4  ERR= 5.4e-14  INIT:   0.0567s  GAUS:  18.4741s  BSUB:   0.0131s
+
+Threads: 8
+Nthreads= 8  ERR= 5.5e-14  INIT:   0.0330s  GAUS:  14.6142s  BSUB:   0.0132s
+
+Threads: 16
+Nthreads=16  ERR= 5.8e-14  INIT:   0.0186s  GAUS:   3.8655s  BSUB:   0.0167s

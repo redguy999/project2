@@ -54,32 +54,43 @@ void rand_system()
         printf("Unable to allocate memory for linear system\n");
         exit(EXIT_FAILURE);
     }
-
-    // initialize pseudorandom number generator
-    // (see https://en.wikipedia.org/wiki/Linear_congruential_generator)
-    unsigned long seed = 0;
-
-    // generate random matrix entries
-    #pragma omp parallel for
-    for (int row = 0; row < n; row++) {
+    
+    // start parallel region here to reduce overhead
+    #pragma omp parallel \
+        default(none) \
+        shared(A, n, triangular_mode)
+    {
+        // initialize pseudorandom number generator
+        // (see https://en.wikipedia.org/wiki/Linear_congruential_generator)
+        unsigned long seed = 0;
         #ifdef _OPENMP
-        //Probably should do this differently
-        seed = omp_get_thread_num();
+        seed = omp_get_thread_num(); // set seed out here for one seed per thread
         #endif
-        int col = triangular_mode ? row : 0;
-        //NOTE: if triangular_mode is true, we can't pragma the inner loop.
-        for (; col < n; col++) {
-            if (row != col) {
-                seed = (1103515245*seed + 12345) % (1<<31);
-                A[row*n + col] = (REAL)seed / (REAL)ULONG_MAX;
-            } else {
-                A[row*n + col] = n/10.0;
+
+        // generate random matrix entries
+        #pragma omp for
+        for (int row = 0; row < n; row++) {
+            // #ifdef _OPENMP
+            //Probably should do this differently
+            // seed = omp_get_thread_num();
+            // #endif
+            int col = triangular_mode ? row : 0;
+            //NOTE: if triangular_mode is true, we can't pragma the inner loop.
+            for (; col < n; col++) {
+                if (row != col) {
+                    seed = (1103515245*seed + 12345) % (1<<31);
+                    A[row*n + col] = (REAL)seed / (REAL)ULONG_MAX;
+                } else {
+                    A[row*n + col] = n/10.0;
+                }
             }
         }
     }
 
     // generate right-hand side such that the solution matrix is all 1s
-    #pragma omp parallel for
+    #pragma omp parallel for \
+        default(none) \
+        shared(A, b, n)
     for (int row = 0; row < n; row++) {
         b[row] = 0.0;
         for (int col = 0; col < n; col++) {
@@ -143,7 +154,8 @@ void gaussian_elimination()
     //Don't think we can parallelize the inner loops, due to the variable inner loop values.
     // #pragma omp parallel for //This doesn't work.
     for (int pivot = 0; pivot < n; pivot++) {
-        #pragma omp parallel for
+        #pragma omp parallel for default(none) \
+            shared(A, b, n, pivot)
         for (int row = pivot+1; row < n; row++) {
             REAL coeff = A[row*n + pivot] / A[pivot*n + pivot];
             A[row*n + pivot] = 0.0;
@@ -177,14 +189,15 @@ void back_substitution_row()
  */
 void back_substitution_column()
 {
-    #pragma omp parallel for
+    #pragma omp parallel for default(none) shared(A, x, b, n)
     for (int row = 0; row < n; row++) {
         x[row] = b[row];
     }
     for (int col = n-1; col >= 0; col--) {
         x[col] /= A[col*n + col];
         //I think we can parallelize this inner loop, though I'm not sure this is quite how to do it.
-        #pragma omp parallel for
+        #pragma omp parallel for default(none) \
+            shared(A, x, n, col)
         for (int row = 0; row < col; row++) {
             x[row] += -A[row*n + col] * x[col];
         }
